@@ -255,7 +255,7 @@ body.notes-on aside.notes { display: block; }
           <tr><td class="mono">predict_term_deposit</td><td>45K contacts from a term-deposit campaign</td></tr>
           <tr><td class="mono">fpr_records</td><td>Financial product recommendations</td></tr>
         </table>
-        <p class="small mt">Destination: <code>LAB_DB_WEBINAR_MKEQK4BJ_INSTR_DEV.HICHAM_BAB_POSTGRES_FINANCIAL_SERVICES</code></p>
+        <p class="small mt">Destination: a dedicated landing schema in Snowflake, one per connector.</p>
       </div>
       <div class="card ft-b">
         <h3>What to show</h3>
@@ -508,8 +508,7 @@ body.notes-on aside.notes { display: block; }
           </table>
         </div>
         <ul class="clean mt">
-          <li>Snowflake: <code>a3209653506471-sales_eng_hands_on_lab</code>, lab <code>webinar_mkeqk4bj</code></li>
-          <li>Gold layer: <code>LAB_DB_WEBINAR_MKEQK4BJ_INSTR_PROD.CORE</code>, views in <code>.SEMANTIC</code></li>
+          <li>Gold layer: schema <code>CORE</code> in the prod database, semantic views in <code>SEMANTIC</code></li>
           <li>All prompts: <code>DEMO_PROMPTS.md</code> at the repo root</li>
           <li>Reset: re-checkout <code>demo/wizard-fix-me</code>; drop any Wizard branch after the demo</li>
         </ul>
