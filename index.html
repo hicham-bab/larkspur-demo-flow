@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larkspur Demo Flow</title>
+<meta name="description" content="Fivetran moves it, dbt defines it once, Snowflake serves it to every business user. A joint demo on Larkspur Financial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1020;
+  --bg-2: #121a33;
+  --panel: #18213f;
+  --line: #2a3561;
+  --text: #eef1fb;
+  --muted: #9aa5c7;
+  --fivetran: #3d8bff;
+  --dbt: #ff694a;
+  --snow: #29b5e8;
+  --good: #3ccf91;
+  --bad: #ff5d73;
+  --warn: #ffc24b;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+section.slide {
+  min-height: 100vh; scroll-snap-align: start; position: relative;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 72px max(16px, 7vw) 64px; border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+section.slide.alt { background: var(--bg-2); }
+.inner { max-width: 1180px; width: 100%; margin: 0 auto; }
+h1 { font-size: clamp(2.2rem, 5.5vw, 4.4rem); line-height: 1.05; margin: 0 0 20px; letter-spacing: -0.02em; font-weight: 800; }
+h2 { font-size: clamp(1.6rem, 3.4vw, 2.7rem); line-height: 1.1; margin: 0 0 18px; letter-spacing: -0.015em; font-weight: 800; }
+h3 { font-size: 1.1rem; margin: 0 0 8px; font-weight: 700; }
+p { margin: 0 0 14px; }
+.lead { font-size: clamp(1.05rem, 1.6vw, 1.35rem); color: var(--muted); max-width: 52em; }
+.kicker { font: 600 0.8rem/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tag { display: inline-block; padding: 5px 10px; border-radius: 999px; font: 600 0.75rem/1 var(--mono); letter-spacing: 0.06em; border: 1px solid currentColor; }
+.ft { color: var(--fivetran); } .dbt { color: var(--dbt); } .sf { color: var(--snow); }
+.good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+code { background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 5px; }
+pre { background: #070b17; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; overflow-x: auto; font: 0.85rem/1.55 var(--mono); margin: 0; color: #cfd6ef; }
+pre .c { color: #6c7799; } pre .k { color: var(--snow); } pre .s { color: var(--good); }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.card p, .card li { color: var(--muted); font-size: 0.95rem; }
+.card.ft-b { border-top: 3px solid var(--fivetran); }
+.card.dbt-b { border-top: 3px solid var(--dbt); }
+.card.sf-b { border-top: 3px solid var(--snow); }
+ul.clean { list-style: none; padding: 0; margin: 0; }
+ul.clean li { padding: 6px 0 6px 22px; position: relative; }
+ul.clean li::before { content: ""; position: absolute; left: 4px; top: 15px; width: 7px; height: 7px; border-radius: 2px; background: var(--muted); }
+ul.clean.ft li::before { background: var(--fivetran); }
+ul.clean.dbt li::before { background: var(--dbt); }
+ul.clean.sf li::before { background: var(--snow); }
+table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.72rem/1.2 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+td.num { font-family: var(--mono); white-space: nowrap; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+blockquote { margin: 0; padding: 16px 20px; border-left: 3px solid var(--dbt); background: rgba(255,105,74,0.07); border-radius: 0 12px 12px 0; font-size: 1rem; color: var(--text); }
+blockquote.sf { border-color: var(--snow); background: rgba(41,181,232,0.07); }
+blockquote.ft { border-color: var(--fivetran); background: rgba(61,139,255,0.07); }
+.big { font: 800 clamp(2.2rem, 5vw, 3.6rem)/1 var(--sans); letter-spacing: -0.02em; }
+.small { font-size: 0.85rem; color: var(--muted); }
+.mt { margin-top: 22px; } .mt2 { margin-top: 36px; }
+
+/* pipeline strip */
+.flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: stretch; }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 1.6rem; }
+.act { border-radius: 16px; padding: 22px; border: 1px solid var(--line); background: var(--panel); position: relative; }
+.act .n { font: 700 0.75rem/1 var(--mono); letter-spacing: 0.14em; color: var(--muted); }
+.act h3 { font-size: 1.5rem; margin: 10px 0 4px; }
+.act .who { font: 600 0.8rem/1.3 var(--mono); margin-bottom: 12px; }
+.act.ft { border-top: 4px solid var(--fivetran); } .act.dbt { border-top: 4px solid var(--dbt); } .act.sf { border-top: 4px solid var(--snow); }
+.act p { color: var(--muted); font-size: 0.95rem; }
+.act .time { position: absolute; top: 20px; right: 20px; font: 600 0.8rem/1 var(--mono); color: var(--muted); }
+
+/* layer ladder */
+.ladder { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rung { padding: 10px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font: 600 0.85rem/1.2 var(--mono); }
+.rung small { display: block; font: 400 0.72rem/1.3 var(--sans); color: var(--muted); margin-top: 3px; }
+.rung.hot { border-color: var(--dbt); box-shadow: 0 0 0 1px var(--dbt) inset; }
+.ladder .sep { color: var(--muted); }
+
+/* act divider slides */
+.divider .num { font: 800 clamp(6rem, 18vw, 13rem)/0.85 var(--sans); letter-spacing: -0.05em; opacity: 0.16; position: absolute; right: 5vw; bottom: 4vh; }
+.divider.ft { background: radial-gradient(ellipse at 20% 30%, rgba(61,139,255,0.22), transparent 60%), var(--bg); }
+.divider.dbt { background: radial-gradient(ellipse at 20% 30%, rgba(255,105,74,0.22), transparent 60%), var(--bg); }
+.divider.sf { background: radial-gradient(ellipse at 20% 30%, rgba(41,181,232,0.22), transparent 60%), var(--bg); }
+.title { background: radial-gradient(ellipse at 15% 20%, rgba(61,139,255,0.25), transparent 50%), radial-gradient(ellipse at 85% 30%, rgba(255,105,74,0.2), transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(41,181,232,0.2), transparent 55%), var(--bg); }
+.brandbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+
+/* story */
+.story p { font-size: clamp(1.05rem, 1.7vw, 1.3rem); max-width: 40em; }
+.story .time-stamp { font: 700 0.9rem/1 var(--mono); color: var(--warn); letter-spacing: 0.1em; }
+.decks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 24px 0; }
+.deck { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.deck .label { font: 600 0.75rem/1 var(--mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.deck .row { display: flex; justify-content: space-between; margin-top: 12px; gap: 12px; }
+.deck .row span:last-child { font: 700 1.3rem/1 var(--mono); }
+
+/* metric compare */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.vs .card .big { margin: 8px 0; }
+
+/* notes */
+aside.notes { display: none; margin-top: 24px; padding: 14px 18px; border: 1px dashed var(--warn); border-radius: 12px; color: var(--warn); font-size: 0.92rem; max-width: 1180px; }
+aside.notes::before { content: "Speaker notes  "; font: 700 0.72rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+body.notes-on aside.notes { display: block; }
+
+/* chrome */
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 10; background: linear-gradient(90deg, var(--fivetran), var(--dbt), var(--snow)); transition: width 0.2s; }
+.hud { position: fixed; bottom: 14px; right: 16px; z-index: 10; display: flex; gap: 8px; align-items: center; font: 600 0.75rem/1 var(--mono); color: var(--muted); }
+.hud button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; cursor: pointer; }
+.hud button:hover { border-color: var(--muted); }
+.hud .count { padding: 7px 4px; }
+.keys { position: fixed; bottom: 18px; left: 16px; z-index: 10; font: 0.72rem/1 var(--mono); color: var(--muted); opacity: 0.7; }
+
+@media (max-width: 900px) {
+  .g3, .g4, .g5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow { grid-template-columns: 1fr; }
+  .flow .arrow { transform: rotate(90deg); justify-self: center; }
+  .keys { display: none; }
+}
+@media (max-width: 600px) {
+  html { scroll-snap-type: none; }
+  section.slide { min-height: auto; padding: 56px 16px 48px; }
+  .g2, .g3, .g4, .g5, .vs, .decks { grid-template-columns: 1fr; }
+  .divider .num { font-size: 6rem; }
+}
+@media print {
+  html { scroll-snap-type: none; }
+  section.slide { min-height: auto; page-break-after: always; border: 0; }
+  .progress, .hud, .keys { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<!-- 1. TITLE -->
+<section class="slide title">
+  <div class="inner">
+    <div class="kicker">Joint demo · Fivetran + dbt + Snowflake</div>
+    <h1>One number,<br>from the source system<br>to the boardroom.</h1>
+    <p class="lead">Larkspur Financial has data in a core banking database and two different answers in front of its board. In 45 minutes, Fivetran moves the data, dbt defines each number once, and Snowflake puts it in front of every business user.</p>
+    <div class="brandbar">
+      <span class="tag ft">Move · Fivetran</span>
+      <span class="tag dbt">Transform and govern · dbt</span>
+      <span class="tag sf">Consume · Snowflake</span>
+    </div>
+  </div>
+  <aside class="notes">Use arrow keys or space to move, N toggles these notes. Open with the story, not with logos.</aside>
+</section>
+
+<!-- 2. STORY -->
+<section class="slide alt story">
+  <div class="inner">
+    <div class="kicker">The story</div>
+    <div class="time-stamp">THURSDAY, 07:40 · BOARD MEETS AT 09:00</div>
+    <h2 class="mt">"Which number do I say out loud?"</h2>
+    <p>Larkspur Financial is a mid-size lender. Its Chief Risk Officer has two decks open, built by two teams from the same bank, the same loans and the same quarter.</p>
+    <div class="decks">
+      <div class="deck">
+        <div class="label">Deck A · Risk team</div>
+        <div class="row"><span>Approval rate</span><span class="bad">78.2%</span></div>
+        <div class="row"><span>Charge-off rate</span><span class="bad">14.17%</span></div>
+      </div>
+      <div class="deck">
+        <div class="label">Deck B · Finance</div>
+        <div class="row"><span>Approval rate</span><span class="good">65.3%</span></div>
+        <div class="row"><span>Charge-off rate</span><span class="good">14.59%</span></div>
+      </div>
+    </div>
+    <p>Nobody is lying. One team counted "Approve with Strict Conditions" as approved; the other divided losses by every loan, including loans that have not finished yet. The data sits in a Postgres core banking system: risk assessments, 40K loans, a 45K-contact marketing campaign, and 320 customer complaints nobody has modeled.</p>
+    <p>This is how Larkspur gets <strong>one answer by 09:00</strong>, and keeps it.</p>
+  </div>
+  <aside class="notes">Keep it under 90 seconds. Every person in the room has lived the two-decks moment. The numbers are real results from this lab's data, and both "wrong" ones come back as bugs in Act 2.</aside>
+</section>
+
+<!-- 3. FLOW AT A GLANCE -->
+<section class="slide">
+  <div class="inner">
+    <div class="kicker">The flow at a glance</div>
+    <h2>Three acts, three platforms, one definition.</h2>
+    <div class="flow mt">
+      <div class="act ft">
+        <span class="time">~8 min</span>
+        <div class="n">ACT 1</div>
+        <h3 class="ft">Move</h3>
+        <div class="who ft">Fivetran → Snowflake</div>
+        <p>8 Postgres tables land in Snowflake with no pipeline code. Typed, incremental, schema changes handled.</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="act dbt">
+        <span class="time">~20 min</span>
+        <div class="n">ACT 2</div>
+        <h3 class="dbt">Transform and govern</h3>
+        <div class="who dbt">dbt platform · dbt Wizard</div>
+        <p>Data Vault to contract-enforced marts. Wizard fixes three bugs, then builds a Semantic Layer. dbt publishes Snowflake semantic views.</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="act sf">
+        <span class="time">~15 min</span>
+        <div class="n">ACT 3</div>
+        <h3 class="sf">Consume</h3>
+        <div class="who sf">Snowflake CoCo · Snowflake CoWork</div>
+        <p>Five executives, five dashboards, one agent. Every number traces back to a dbt definition.</p>
+      </div>
+    </div>
+    <div class="grid g3 mt2">
+      <div><span class="tag ft">Business value</span><p class="mt small">Data available the same day, without a data engineering backlog.</p></div>
+      <div><span class="tag dbt">Business value</span><p class="mt small">Each KPI is defined once, tested, and owned. The board stops arguing about numbers.</p></div>
+      <div><span class="tag sf">Business value</span><p class="mt small">Executives self-serve answers and apps in Snowflake, on governed numbers.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Presenter split: Fivetran and dbt acts by the dbt + Fivetran SA, Act 3 by the Snowflake SE. Handoff line at the end of Act 2: "The definitions now live in Snowflake. Over to you."</aside>
+</section>
+
+<!-- 4. ACT 1 DIVIDER -->
+<section class="slide divider ft">
+  <div class="inner">
+    <div class="kicker"><span class="tag ft">Act 1</span> Fivetran</div>
+    <h1>Move.</h1>
+    <p class="lead">From a core banking Postgres to Snowflake, without writing a pipeline.</p>
+  </div>
+  <div class="num ft">01</div>
+</section>
+
+<!-- 5. ACT 1 DETAIL -->
+<section class="slide">
+  <div class="inner">
+    <div class="kicker"><span class="tag ft">Act 1</span> Ingestion and landing</div>
+    <h2>Fivetran lands 8 tables in Snowflake.</h2>
+    <div class="grid g2 mt">
+      <div class="card ft-b">
+        <h3>What lands</h3>
+        <table>
+          <tr><th>Table</th><th>Business object</th></tr>
+          <tr><td class="mono">risk_assess_*</td><td>Customers, institutions, risk profiles, monthly assessments, performance (5 tables)</td></tr>
+          <tr><td class="mono">loan</td><td>~40K consumer loans, 2007 to 2011</td></tr>
+          <tr><td class="mono">predict_term_deposit</td><td>45K contacts from a term-deposit campaign</td></tr>
+          <tr><td class="mono">fpr_records</td><td>Financial product recommendations</td></tr>
+        </table>
+        <p class="small mt">Destination: a dedicated landing schema in Snowflake, one per connector.</p>
+      </div>
+      <div class="card ft-b">
+        <h3>What to show</h3>
+        <ul class="clean ft">
+          <li>Connector page: status, sync frequency, sync history.</li>
+          <li>Schema tab: pick tables and columns. Block or hash sensitive columns at ingestion.</li>
+          <li>Snowflake: the tables are there, typed, with <code>_fivetran_synced</code> on every row.</li>
+          <li>The loan table carries <code>ssn</code> and <code>drivers_license</code>. Remember them: dbt makes sure they never reach a mart.</li>
+        </ul>
+      </div>
+    </div>
+    <blockquote class="ft mt">"No one at Larkspur wrote a pipeline. When the core banking team adds a column on Friday, it is in Snowflake on Monday, and nobody gets paged."</blockquote>
+  </div>
+  <aside class="notes">Proof query in a Snowsight worksheet: select count(*) from the loan table, then show _fivetran_synced. Optional MDLS aside: the same connector can land open Iceberg tables in a managed data lake that Snowflake, Databricks and others read directly. Mention it only if the audience is lakehouse-curious.</aside>
+</section>
+
+<!-- 6. ACT 2 DIVIDER -->
+<section class="slide divider dbt">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">Act 2</span> dbt platform · dbt Wizard</div>
+    <h1>Transform<br>and govern.</h1>
+    <p class="lead">Raw tables become tested, contracted, documented business definitions. Then an agent fixes what humans broke.</p>
+  </div>
+  <div class="num dbt">02</div>
+</section>
+
+<!-- 7. ACT 2 ARCHITECTURE -->
+<section class="slide alt">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">Act 2</span> The project</div>
+    <h2>Six layers, one lineage graph.</h2>
+    <div class="ladder mt">
+      <div class="rung">01 staging<small>rename, cast, drop identity columns</small></div><span class="sep">→</span>
+      <div class="rung">02 raw vault<small>datavault4dbt hubs, links, satellites</small></div><span class="sep">→</span>
+      <div class="rung">03 intermediate<small>business rules</small></div><span class="sep">→</span>
+      <div class="rung hot">04 marts<small>public, contract enforced</small></div><span class="sep">→</span>
+      <div class="rung hot">05 semantic layer<small>governed metrics</small></div><span class="sep">→</span>
+      <div class="rung hot">06 semantic views<small>published to Snowflake</small></div>
+    </div>
+    <div class="grid g3 mt2">
+      <div class="card dbt-b">
+        <h3>Contracts</h3>
+        <p>Every public mart declares its columns and types. Rename <code>interest_rate_pct</code> in <code>fct_loans</code> and the build stops before a consumer breaks.</p>
+      </div>
+      <div class="card dbt-b">
+        <h3>Tests that encode the business</h3>
+        <p>"A credit line cannot open after the loan" and "approval means Approve or Approve with Conditions" are tests, not tribal knowledge.</p>
+      </div>
+      <div class="card dbt-b">
+        <h3>dbt Mesh</h3>
+        <p>The platform project owns the marts. Finance, marketing and data science projects reference them across project boundaries.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Quick contract break (optional, 1 minute): in fct_loans.sql line 24 change "interest_rate_pct," to "interest_rate_pct as interest_rate,", build, show the contract error, revert. This is the moment governance stops being a slide.</aside>
+</section>
+
+<!-- 8. WIZARD FIX-ME -->
+<section class="slide">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">Act 2 · Beat 1</span> dbt Wizard fixes the build · ~8 min</div>
+    <h2>Three planted bugs: two red tests, one silent lie.</h2>
+    <div class="tablewrap mt">
+      <table>
+        <tr><th>#</th><th>Symptom</th><th>What someone broke</th><th>The fix</th></tr>
+        <tr><td>1</td><td><span class="bad">Fails:</span> <code>assert_credit_line_opened_before_loan</code></td><td>A "simplification" in <code>int_loans</code> parses <code>Nov-69</code> as 2069</td><td>Restore the century rule</td></tr>
+        <tr><td>2</td><td><span class="bad">Fails:</span> <code>assert_source_approval_pct_...</code></td><td><code>is_approved</code> uses <code>like 'Approve%'</code>, which counts Strict Conditions</td><td>Back to the governed list. 78.2% → <span class="good">65.3%</span></td></tr>
+        <tr><td>3</td><td><span class="warn">Nothing fails.</span> Finance says 14.59%, the metric says 14.17%</td><td><code>matured_loans</code> lost its <code>is_matured</code> filter</td><td>Restore it, then add a guard test</td></tr>
+        <tr><td class="small">bonus</td><td class="small">7 dbt v2 warnings on numeric precision</td><td class="small">Real, not planted</td><td class="small">Contracts to <code>number(38,0)</code></td></tr>
+      </table>
+    </div>
+    <blockquote class="mt">The build on this branch is red. Find the root cause of each failing test and fix the model, not the test. Read context/data_caveats.md first: each test guards a caveat written there. Explain each fix in one sentence a credit risk analyst would understand.</blockquote>
+  </div>
+  <aside class="notes">Run dbt build first so the room sees red. Paste the prompt. Point out that Wizard reads AGENTS.md and the caveats file: the project context is what makes the agent right, not the model alone.</aside>
+</section>
+
+<!-- 9. THE SILENT ONE -->
+<section class="slide alt">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">Act 2 · Beat 1</span> The best moment of the act</div>
+    <h2>A broken number that still looks plausible.</h2>
+    <div class="vs mt">
+      <div class="card">
+        <div class="small mono">CHARGED OFF / ALL LOANS</div>
+        <div class="big bad">14.17%</div>
+        <p>Includes loans that are still running and have no outcome yet. Every test passes.</p>
+      </div>
+      <div class="card">
+        <div class="small mono">CHARGED OFF / MATURED LOANS</div>
+        <div class="big good">14.59%</div>
+        <p>The governed definition. Only Fully Paid or Charged Off loans count.</p>
+      </div>
+    </div>
+    <blockquote class="mt">Finance reports a charge-off rate of 14.59%, but the Semantic Layer metric charge_off_rate returns 14.17%. Nothing failed in the build. Find out which side is wrong and why, fix it, and add a test so this kind of definition drift fails the build next time.</blockquote>
+    <p class="lead mt">Tests catch broken data. Only governed definitions catch a broken number.</p>
+  </div>
+  <aside class="notes">Pause here. This is the bug that reaches a board deck in real life. Wizard should spot that the matured_loans description says "Fully Paid or Charged Off" while the metric counts every loan.</aside>
+</section>
+
+<!-- 10. WIZARD BUILDS A SEMANTIC LAYER -->
+<section class="slide">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">Act 2 · Beat 2</span> dbt Wizard builds a Semantic Layer · ~10 min</div>
+    <h2>320 complaints, from a CSV to governed metrics.</h2>
+    <div class="grid g4 mt">
+      <div class="card dbt-b"><div class="small mono">PROMPT 1</div><h3>Model it</h3><p>Hub, link and satellite following the house Data Vault pattern. Complaint text stays in the vault.</p></div>
+      <div class="card dbt-b"><div class="small mono">PROMPT 2</div><h3>Contract it</h3><p><code>fct_complaints</code>: public, contract enforced, tested keys and relationships.</p></div>
+      <div class="card dbt-b"><div class="small mono">PROMPT 3</div><h3>Define it</h3><p>Semantic model, six simple metrics, and an <code>upheld_rate</code> over <em>resolved</em> complaints only.</p></div>
+      <div class="card dbt-b"><div class="small mono">PROMPT 4</div><h3>Prove it</h3><p>Build, test, query the Semantic Layer. Show the naive number next to the governed one.</p></div>
+    </div>
+    <div class="tablewrap mt">
+      <table>
+        <tr><th>Metric</th><th>Expected</th><th>Why it matters</th></tr>
+        <tr><td>complaint_count</td><td class="num">320</td><td>On 200 credit relationships</td></tr>
+        <tr><td>open_complaint_rate</td><td class="num">22.2%</td><td>71 open or escalated</td></tr>
+        <tr><td>upheld_rate (governed)</td><td class="num good">51.4%</td><td>Over resolved complaints only</td></tr>
+        <tr><td>naive upheld rate</td><td class="num bad">40.0%</td><td>The trap: divides by open complaints too</td></tr>
+      </table>
+    </div>
+  </div>
+  <aside class="notes">Same pattern as charge-off: the denominator is the definition.</aside>
+</section>
+
+<!-- 11. BRIDGE: SEMANTIC VIEWS -->
+<section class="slide alt">
+  <div class="inner">
+    <div class="kicker"><span class="tag dbt">dbt</span> <span class="tag sf">Snowflake</span> The handoff</div>
+    <h2>dbt publishes the definitions as Snowflake semantic views.</h2>
+    <div class="grid g2 mt">
+      <div>
+        <pre><span class="c">-- models/06_semantic_views/sv_lending_book.sql</span>
+{{ config(materialized=<span class="s">'semantic_view'</span>, schema=<span class="s">'semantic'</span>) }}
+
+<span class="k">tables</span> (
+  loans <span class="k">as</span> {{ ref(<span class="s">'fct_loans'</span>) }} <span class="k">primary key</span> (loan_id)
+)
+<span class="k">metrics</span> (
+  loans.charge_off_rate <span class="k">as</span>
+    count_if(loans.is_charged_off)
+    / nullif(count_if(loans.is_matured), 0)
+    <span class="k">with synonyms</span> = (<span class="s">'default rate'</span>)
+)</pre>
+      </div>
+      <div>
+        <ul class="clean sf">
+          <li><strong>SV_CREDIT_RISK</strong>: approval rate, high-risk exposure share, exposure by region and institution.</li>
+          <li><strong>SV_LENDING_BOOK</strong>: charge-off and net loss rate by grade, purpose, state.</li>
+          <li><strong>SV_TERM_DEPOSIT_CAMPAIGN</strong>: subscription rate by segment. Call duration left out on purpose (it leaks the outcome).</li>
+        </ul>
+        <p class="small mt">Built with <code>Snowflake-Labs/dbt_semantic_view</code>: in dbt lineage, built from contracted marts with <code>ref()</code>, rebuilt by the same prod job.</p>
+      </div>
+    </div>
+    <blockquote class="sf mt">"The definitions now live in Snowflake. Over to you."</blockquote>
+  </div>
+  <aside class="notes">This is the seam between the two companies. The definitions are written once, in dbt, with tests; Snowflake serves them natively to Cortex Analyst, Snowflake CoCo and Snowflake CoWork.</aside>
+</section>
+
+<!-- 12. ACT 3 DIVIDER -->
+<section class="slide divider sf">
+  <div class="inner">
+    <div class="kicker"><span class="tag sf">Act 3</span> Snowflake</div>
+    <h1>Consume.</h1>
+    <p class="lead">Business users get apps, dashboards and answers, all on governed numbers.</p>
+  </div>
+  <div class="num sf">03</div>
+</section>
+
+<!-- 13. PERSONAS -->
+<section class="slide">
+  <div class="inner">
+    <div class="kicker"><span class="tag sf">Act 3</span> Snowflake CoCo builds for five executives</div>
+    <h2>Five people, five questions, one source of truth.</h2>
+    <div class="grid g5 mt">
+      <div class="card sf-b"><div class="small mono">CRO</div><h3>"Five minutes, Monday morning."</h3><p>CRO Cockpit: exposure, high-risk share, approval and charge-off tiles, risk heatmap, an AI briefing.</p></div>
+      <div class="card sf-b"><div class="small mono">HEAD OF CREDIT RISK</div><h3>"Where is risk moving?"</h3><p>Deteriorating institutions, risk vs exposure scatter, the Strict Conditions gap.</p></div>
+      <div class="card sf-b"><div class="small mono">HEAD OF LENDING</div><h3>"Is the book profitable?"</h3><p>Charge-off and net loss by grade, a pricing check per grade, a US map.</p></div>
+      <div class="card sf-b"><div class="small mono">HEAD OF MARKETING</div><h3>"Who do we call next?"</h3><p>Subscription rate by segment, the five best next segments, diminishing returns.</p></div>
+      <div class="card sf-b"><div class="small mono">CHIEF COMPLIANCE</div><h3>"Is conduct risk rising?"</h3><p>New SV_COMPLAINTS view, upheld rate by institution, complaints by risk level.</p></div>
+    </div>
+    <blockquote class="sf mt">Guardrail preamble pasted before every prompt: use the semantic views for every metric, only CORE marts for tables, no customer names, never pick who to call from call duration.</blockquote>
+  </div>
+  <aside class="notes">Pick two personas live (CRO and Head of Lending land best), keep the others as screenshots. A one-shot "Larkspur Board Pack" prompt can build all four pages at once.</aside>
+</section>
+
+<!-- 14. COWORK AGENT -->
+<section class="slide alt">
+  <div class="inner">
+    <div class="kicker"><span class="tag sf">Act 3</span> Snowflake CoWork</div>
+    <h2>Ask Larkspur. Get the same number dbt defined.</h2>
+    <div class="grid g2 mt">
+      <div class="card sf-b">
+        <h3>Agent "Larkspur Analyst"</h3>
+        <p>Three semantic views as Cortex Analyst tools. Answers with governed metrics only, states each definition in one line under the number, refuses questions about named customers.</p>
+        <blockquote class="sf mt">Which region has the highest share of exposure in high-risk relationships, and is it getting worse?</blockquote>
+      </div>
+      <div class="card">
+        <h3>The cross-check for the room</h3>
+        <table>
+          <tr><th>Metric</th><th>dbt Semantic Layer</th><th>Snowflake agent</th></tr>
+          <tr><td>Approval rate</td><td class="num">65.3%</td><td class="num good">65.3%</td></tr>
+          <tr><td>Charge-off rate</td><td class="num">14.59%</td><td class="num good">14.59%</td></tr>
+          <tr><td>High-risk exposure share</td><td class="num">25.6%</td><td class="num good">25.6%</td></tr>
+        </table>
+        <p class="small mt">Same numbers in every tool, because the definition exists once.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">End the act on the matching numbers. It is the payoff of the story slide: the CRO now has one deck.</aside>
+</section>
+
+<!-- 15. CLOSE -->
+<section class="slide title">
+  <div class="inner">
+    <div class="kicker">Back to Thursday, 09:00</div>
+    <h1>One deck.<br>One number.<br>Everyone can ask.</h1>
+    <div class="grid g3 mt2">
+      <div class="card ft-b"><h3 class="ft">Fivetran moved it</h3><p>8 tables, no pipeline code, landed and kept fresh in Snowflake.</p></div>
+      <div class="card dbt-b"><h3 class="dbt">dbt defined it once</h3><p>Tests, contracts and governed metrics. dbt Wizard fixed and extended the project in minutes, inside the same guardrails.</p></div>
+      <div class="card sf-b"><h3 class="sf">Snowflake served it</h3><p>Semantic views, Snowflake CoCo apps and a CoWork agent for every business persona.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Close on the business outcome, not the features: the board argued about the business instead of the numbers.</aside>
+</section>
+
+<!-- 16. CHEAT SHEET -->
+<section class="slide alt">
+  <div class="inner">
+    <div class="kicker">Reference · try it yourself</div>
+    <h2>The numbers, and how to rebuild them.</h2>
+    <div class="grid g2 mt">
+      <div class="tablewrap">
+        <table>
+          <tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>Approval rate (governed / any approval)</td><td class="num">65.3% / 78.2%</td></tr>
+          <tr><td>Charge-off rate (matured / all)</td><td class="num">14.59% / 14.17%</td></tr>
+          <tr><td>Loans</td><td class="num">39,717</td></tr>
+          <tr><td>Total exposure</td><td class="num">$8.50B</td></tr>
+          <tr><td>High-risk exposure share</td><td class="num">25.6%</td></tr>
+          <tr><td>Campaign subscription rate</td><td class="num">11.7%</td></tr>
+          <tr><td>Complaints / open rate / upheld</td><td class="num">320 / 22.2% / 51.4%</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="card dbt-b">
+          <h3>Run it on your own Snowflake account</h3>
+          <p>The project and the data are public: <a href="https://github.com/hicham-bab/larkspur-financial-dbt-lab">github.com/hicham-bab/larkspur-financial-dbt-lab</a>.</p>
+        </div>
+        <ul class="clean mt">
+          <li>Run <code>setup/snowflake_setup.sql</code> in a Snowsight worksheet: it loads the 8 source tables in about a minute</li>
+          <li>Connect the repo to the dbt platform and build <code>platform</code>, then the consumer projects</li>
+          <li>Gold layer: schema <code>CORE</code> in your prod database, semantic views in <code>SEMANTIC</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="hud">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <span class="count" id="count">1 / 1</span>
+  <button id="next" aria-label="Next slide">→</button>
+  <button id="notes" aria-label="Toggle speaker notes">Notes</button>
+</div>
+<div class="keys">← → / space · N notes · P print</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
+  var count = document.getElementById('count');
+  var bar = document.getElementById('progress');
+  var current = 0;
+  function show(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides[current].scrollIntoView({ behavior: 'smooth' });
+  }
+  function update() {
+    var mid = window.scrollY + window.innerHeight / 2, idx = 0;
+    slides.forEach(function (s, i) { if (s.offsetTop <= mid) idx = i; });
+    current = idx;
+    count.textContent = (idx + 1) + ' / ' + slides.length;
+    bar.style.width = ((idx + 1) / slides.length * 100) + '%';
+    try { history.replaceState(null, '', '#' + (idx + 1)); } catch (e) {}
+  }
+  function toggleNotes() {
+    document.body.classList.toggle('notes-on');
+    try { localStorage.setItem('larkspur-notes', document.body.classList.contains('notes-on') ? '1' : '0'); } catch (e) {}
+  }
+  try { if (localStorage.getItem('larkspur-notes') === '1') document.body.classList.add('notes-on'); } catch (e) {}
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].indexOf(e.key) > -1) { e.preventDefault(); show(current + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp'].indexOf(e.key) > -1) { e.preventDefault(); show(current - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+    else if (e.key === 'n' || e.key === 'N') toggleNotes();
+    else if (e.key === 'p' || e.key === 'P') window.print();
+  });
+  document.getElementById('prev').onclick = function () { show(current - 1); };
+  document.getElementById('next').onclick = function () { show(current + 1); };
+  document.getElementById('notes').onclick = toggleNotes;
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  var h = parseInt((location.hash || '').slice(1), 10);
+  if (h > 0) setTimeout(function () { slides[Math.min(h, slides.length) - 1].scrollIntoView(); update(); }, 50);
+  update();
+})();
+</script>
+</body>
+</html>
